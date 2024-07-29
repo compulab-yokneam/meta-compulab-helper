@@ -1,0 +1,40 @@
+#!/bin/bash -e
+
+unset SCRIPTS
+SCRIPTS+=" https://raw.githubusercontent.com/compulab-yokneam/meta-compulab-helper/master/scripts/meta-compulab-helper.xml"
+
+function update_conf_files() {
+    local T="${BUILDDIR}/../sources/meta-compulab-helper/templates"
+    for _d in ${T}/*;do
+        _file=$(basename ${_d})
+        for _f in ${_d}/*;do
+            cat ${_f} >> ${BUILDDIR}/conf/${_file}
+        done;
+    done
+}
+
+function update_environment() {
+    if [ -d ${BUILDDIR}/../.repo ];then
+        for script in ${SCRIPTS};do
+            [[ ! -f ${BUILDDIR}/../.repo/local_manifests/$(basename ${script}) ]] || return 1
+            wget --directory-prefix .repo/local_manifests ${script} || true
+        done
+        repo sync || true
+    fi
+    return 0
+}
+
+function update_function() {
+    pushd ${BUILDDIR}/../
+    update_environment && update_conf_files || true
+    popd
+}
+
+function help_function() {
+cat << eof
+    Make sure that the script issued from the Yocto environment.
+    BUILDDIR is not defined !!!
+eof
+}
+
+[[ -n "${BUILDDIR}" ]] && update_function || help_function
